@@ -1,4 +1,5 @@
 .DS_Store
+users.db
 slack.json
 users.json
 
