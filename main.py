@@ -1,5 +1,7 @@
 # -*- coding: utf-8
-import sqlite3,json,requests,datetime
+import RPi.GPIO as GPIO
+import sqlite3,json,requests,datetime,time
+
 
 def main():
     setup()
@@ -50,7 +52,21 @@ def knock_api(name,presence):
     params['text'] = '\n>%s　%s　[%s]' % (stamp,name,status)
     headers={'Content-type':'application/x-www-form-urlencoded'}
     r = requests.post(base_url,data=params,headers=headers)
+    beep()
 
+#可否を伝えるベル。呼べばなる
+def beep():
+    SOUNDER = 21
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(SOUNDER, GPIO.OUT, initial = GPIO.LOW)
+    p = GPIO.PWM(SOUNDER, 1)
+    p.start(50)
+    p.ChangeFrequency(10000)
+    time.sleep(0.2)
+    p.ChangeFrequency(13000)
+    time.sleep(0.1)
+    p.stop()
+    GPIO.cleanup()
 
 #db接続
 conn = sqlite3.connect('users.db')
