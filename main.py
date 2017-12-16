@@ -6,7 +6,7 @@ def main():
     #TODO:フェリカリーダー待機するの
 
     #TODO:読み取ったIDいれるの
-    f_id = ("your-felica-id2",)
+    f_id = ("your-felica-id",)
     for user in c.execute('select id,name,presence from users where id=?',f_id) :
         #叩く
         knock_api( user[1], user[2] )
@@ -23,13 +23,16 @@ def setup():
     users = json.load(open('users.json','r'))
     # なければテーブルを作るの
     try:
-        c.execute('''create table users (id varchar(256) unique, name varchar(64), presence int)''')
+        c.execute('''CREATE TABLE users (id varchar(256) PRIMARY KEY UNIQUE, name varchar(64), presence int)''')
         conn.commit()
     except sqlite3.OperationalError: None
 
     # 新規ユーザー追加したりするの
     try:
-        c.executemany('insert into users (id, name, presence) values (?,?,?)', users)
+        before = []
+        for user in c.execute('SELECT * FROM users') : before.append(user)
+        c.executemany('REPLACE INTO users (id, name, presence) VALUES (?,?,?)', users)
+        c.executemany('REPLACE INTO users (id, name, presence) VALUES (?,?,?)', before)
         conn.commit()
     except sqlite3.IntegrityError: None
 
@@ -40,7 +43,7 @@ def setup():
 def knock_api(name,presence):
     status = "出勤" if presence==0 else "退勤"
     d = datetime.datetime.today()#スタンプ作るの
-    stamp = "%s年%s月%s日%s:%s" % (d.year,d.month,d.day,d.hour,d.minute)
+    stamp = "%s年%02d月%02d日%02d:%02d" % (d.year,d.month,d.day,d.hour,d.minute)
     base_url = "https://slack.com/api/chat.postMessage"
     params = json.load(open('slack.json','r'))
     params['username'] = '勤怠ログ'
