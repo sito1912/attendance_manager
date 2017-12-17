@@ -1,0 +1,4 @@
+[
+  ["your-felica-id","your-name",0],
+  ["your-felica-id2","your-name",0]
+]
