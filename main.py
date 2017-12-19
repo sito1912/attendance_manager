@@ -11,6 +11,7 @@ def main():
     f_id = ("your-felica-id",)
     for user in c.execute('select id,name,presence from users where id=?',f_id) :
         #叩く
+        beep(True)
         knock_api( user[1], user[2] )
         #退勤反転
         c.execute('UPDATE users SET presence=? WHERE id=?', ( 1 if user[2]==0 else 0, user[0] ) )
@@ -52,21 +53,27 @@ def knock_api(name,presence):
     params['text'] = '\n>%s　%s　[%s]' % (stamp,name,status)
     headers={'Content-type':'application/x-www-form-urlencoded'}
     r = requests.post(base_url,data=params,headers=headers)
-    beep()
+
 
 #可否を伝えるベル。呼べばなる
-def beep():
+def beep(success):
+    do,re,mi,fa,so,ra,si = 261.626,293.665,329.628,349.228,391.995,440.,493.883
+    octave = 1
     SOUNDER = 21
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(SOUNDER, GPIO.OUT, initial = GPIO.LOW)
     p = GPIO.PWM(SOUNDER, 1)
     p.start(50)
-    p.ChangeFrequency(10000)
-    time.sleep(0.2)
-    p.ChangeFrequency(13000)
-    time.sleep(0.1)
+    p.ChangeFrequency( si*4 if success else so )
+    time.sleep( 0.1 if success else 0.5 )
+    p.stop()
+    time.sleep( 0.05 if success else 0.5 )
+    p.start(50)
+    p.ChangeFrequency( mi*8 if success else so )
+    time.sleep( 0.2 if success else 0.5 )
     p.stop()
     GPIO.cleanup()
+
 
 #db接続
 conn = sqlite3.connect('users.db')
