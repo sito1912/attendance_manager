@@ -1,14 +1,33 @@
-# -*- coding: utf-8
+# coding: utf-8
 import RPi.GPIO as GPIO
-import sqlite3,json,requests,datetime,time
+import sqlite3,json,requests,datetime,time,nfc,binascii,os
 
 
 def main():
     setup()
     #TODO:フェリカリーダー待機するの
+    TIME_cycle = 1.0
+    TIME_interval = 0.2
+    target = nfc.clf.RemoteTarget("212F")
+    target.sensf_req = bytearray.fromhex("0000030000")
+    while True:
+            clf = nfc.ContactlessFrontend("usb")
+            target_res = clf.sense(
+                target,
+                iterations=int(TIME_cycle//TIME_interval)+1,
+                interval=TIME_interval)
+            if target_res is not None:
+                tag = nfc.tag.activate_tt3(clf, target_res)
+                tag.sys = 3
+                id = binascii.hexlify(tag.idm)
+                logging(id);
+                time.sleep(3)
+            clf.close()
 
+def logging(id):
+    print('id:',id);
     #TODO:読み取ったIDいれるの
-    f_id = ("your-felica-id",)
+    f_id = (id,)
     for user in c.execute('select id,name,presence from users where id=?',f_id) :
         #叩く
         beep(True)
@@ -17,13 +36,9 @@ def main():
         c.execute('UPDATE users SET presence=? WHERE id=?', ( 1 if user[2]==0 else 0, user[0] ) )
         conn.commit()
 
-    conn.close()
-
-
-
 #users流し込んだりテーブル立てたりするの
 def setup():
-    users = json.load(open('users.json','r'))
+    users = json.load(open('%s/users.json'%abspath,'r'))
     # なければテーブルを作るの
     try:
         c.execute('''CREATE TABLE users (id varchar(256) PRIMARY KEY UNIQUE, name varchar(64), presence int)''')
@@ -48,9 +63,9 @@ def knock_api(name,presence):
     d = datetime.datetime.today()#スタンプ作るの
     stamp = "%s年%02d月%02d日%02d:%02d" % (d.year,d.month,d.day,d.hour,d.minute)
     base_url = "https://slack.com/api/chat.postMessage"
-    params = json.load(open('slack.json','r'))
+    params = json.load(open('%s/slack.json'%abspath,'r'))
     params['username'] = '勤怠ログ'
-    params['text'] = '\n>%s　%s　[%s]' % (stamp,name,status)
+    params['text'] = '\n>%s　%s　[%s]' % (stamp,name.encode('utf-8'),status)
     headers={'Content-type':'application/x-www-form-urlencoded'}
     r = requests.post(base_url,data=params,headers=headers)
 
@@ -74,8 +89,10 @@ def beep(success):
     p.stop()
     GPIO.cleanup()
 
-
 #db接続
-conn = sqlite3.connect('users.db')
+abspath = os.path.abspath(os.path.dirname(__file__))
+conn = sqlite3.connect('%s/users.db' % abspath)
 c = conn.cursor()
-main();
+users = None
+main()
+conn.close()
